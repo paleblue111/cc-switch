@@ -128,12 +128,12 @@ jobs:
             exit 1
           fi
 
-          NEW_ZIP="CC-Switch-${VERSION}-macOS.zip"
+          NEW_ZIP="CodexPRO-Tool-${VERSION}-macOS.zip"
           ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "release-assets/$NEW_ZIP"
           echo "macOS zip ready: $NEW_ZIP"
 
           DMG_SRC=$(find src-tauri/target -path "*/bundle/dmg/*.dmg" -type f | head -1 || true)
-          NEW_DMG="CC-Switch-${VERSION}-macOS.dmg"
+          NEW_DMG="CodexPRO-Tool-${VERSION}-macOS.dmg"
           if [ -n "$DMG_SRC" ]; then
             cp "$DMG_SRC" "release-assets/$NEW_DMG"
             echo "Copied Tauri DMG: $NEW_DMG"
@@ -142,14 +142,14 @@ jobs:
             DMG_STAGE_DIR="$RUNNER_TEMP/dmg-stage"
             rm -rf "$DMG_STAGE_DIR"
             mkdir -p "$DMG_STAGE_DIR"
-            ditto "$APP_PATH" "$DMG_STAGE_DIR/CC Switch.app"
+            ditto "$APP_PATH" "$DMG_STAGE_DIR/CodexPRO Tool.app"
             create-dmg \
-              --volname "CC Switch" \
+              --volname "CodexPRO Tool" \
               --window-size 660 400 \
               --window-pos 200 120 \
               --icon-size 80 \
-              --icon "CC Switch.app" 180 220 \
-              --hide-extension "CC Switch.app" \
+              --icon "CodexPRO Tool.app" 180 220 \
+              --hide-extension "CodexPRO Tool.app" \
               --app-drop-link 480 220 \
               --no-internet-enable \
               "release-assets/$NEW_DMG" \
@@ -178,7 +178,7 @@ jobs:
             $msi = Get-ChildItem -Path (Join-Path $targetRoot 'bundle') -Recurse -Include *.msi -ErrorAction SilentlyContinue | Select-Object -First 1
           }
           if ($null -ne $msi) {
-            $dest = "CC-Switch-$VERSION-Windows$assetSuffix.msi"
+            $dest = "CodexPRO-Tool-$VERSION-Windows$assetSuffix.msi"
             Copy-Item $msi.FullName (Join-Path release-assets $dest)
             Write-Host "Installer copied: $dest"
           } else {
@@ -195,27 +195,27 @@ jobs:
           }
           $exePath = $exeCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
           if ($null -ne $exePath) {
-            $portableDir = 'release-assets/CC-Switch-Portable'
+            $portableDir = 'release-assets/CodexPRO-Tool-Portable'
             New-Item -ItemType Directory -Force -Path $portableDir | Out-Null
             Copy-Item $exePath $portableDir
             $portableIniPath = Join-Path $portableDir 'portable.ini'
             $portableContent = if ($isArm64) {
               @(
-                '# CC Switch portable ARM64 build marker',
+                '# CodexPRO Tool portable ARM64 build marker',
                 'portable=true',
                 'arch=arm64'
               )
             } else {
               @(
-                '# CC Switch portable build marker',
+                '# CodexPRO Tool portable build marker',
                 'portable=true'
               )
             }
             $portableContent | Set-Content -Path $portableIniPath -Encoding UTF8
-            $portableZip = "release-assets/CC-Switch-$VERSION-Windows$assetSuffix-Portable.zip"
+            $portableZip = "release-assets/CodexPRO-Tool-$VERSION-Windows$assetSuffix-Portable.zip"
             Compress-Archive -Path "$portableDir/*" -DestinationPath $portableZip -Force
             Remove-Item -Recurse -Force $portableDir
-            Write-Host "Windows portable zip created: CC-Switch-$VERSION-Windows$assetSuffix-Portable.zip"
+            Write-Host "Windows portable zip created: CodexPRO-Tool-$VERSION-Windows$assetSuffix-Portable.zip"
           } else {
             throw 'Portable exe not found'
           }
@@ -258,20 +258,20 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
-          name: CodexPRO ${{ github.ref_name }}
+          name: CodexPRO Tool ${{ github.ref_name }}
           prerelease: false
           body: |
-            ## CodexPRO ${{ github.ref_name }}
+            ## CodexPRO Tool ${{ github.ref_name }}
 
             Codex provider switcher. Auto-update is disabled.
 
             ### Downloads
 
-            - **macOS (Apple Silicon / Intel, unsigned)**: `CC-Switch-${{ github.ref_name }}-macOS.dmg` or `.zip`
-            - **Windows (x86_64)**: `CC-Switch-${{ github.ref_name }}-Windows.msi` or `CC-Switch-${{ github.ref_name }}-Windows-Portable.zip`
-            - **Windows (ARM64)**: `CC-Switch-${{ github.ref_name }}-Windows-arm64.msi` or `CC-Switch-${{ github.ref_name }}-Windows-arm64-Portable.zip`
+            - **macOS (Apple Silicon / Intel, unsigned)**: `CodexPRO-Tool-${{ github.ref_name }}-macOS.dmg` or `.zip`
+            - **Windows (x86_64)**: `CodexPRO-Tool-${{ github.ref_name }}-Windows.msi` or `CodexPRO-Tool-${{ github.ref_name }}-Windows-Portable.zip`
+            - **Windows (ARM64)**: `CodexPRO-Tool-${{ github.ref_name }}-Windows-arm64.msi` or `CodexPRO-Tool-${{ github.ref_name }}-Windows-arm64-Portable.zip`
 
-            macOS build is **not Apple-signed**. First open: right-click the app → Open, or run `xattr -cr "/Applications/CC Switch.app"`.
+            macOS build is **not Apple-signed**. First open: right-click the app → Open, or run `xattr -cr "/Applications/CodexPRO Tool.app"`.
           files: release-assets/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

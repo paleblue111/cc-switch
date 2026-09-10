@@ -4,7 +4,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "CC Switch",
+        "title": "CodexPRO Tool",
         "titleBarStyle": "Visible",
         "visible": false,
         "minWidth": 900,

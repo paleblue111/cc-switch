@@ -110,7 +110,7 @@ import OpenClawHealthBanner from "@/components/openclaw/OpenClawHealthBanner";
 import HermesMemoryPanel from "@/components/hermes/HermesMemoryPanel";
 import { DEFAULT_VISIBLE_APPS, isProxyAppId } from "@/config/appConfig";
 import {
-  LOCKED_CODEX_PROVIDER,
+  APP_DISPLAY_NAME,
   PRODUCT_APP_ID,
   PRODUCT_UI,
   isProductViewEnabled,
@@ -1335,9 +1335,7 @@ function App() {
               <div className="flex items-center gap-2">
                 {!PRODUCT_UI.settings && !PRODUCT_UI.proxyControls && (
                   <h1 className="text-lg font-semibold">
-                    {t("apps.codex", {
-                      defaultValue: LOCKED_CODEX_PROVIDER.name,
-                    })}
+                    {t("app.title", { defaultValue: APP_DISPLAY_NAME })}
                   </h1>
                 )}
                 {PRODUCT_UI.proxyControls && (

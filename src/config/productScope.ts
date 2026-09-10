@@ -9,6 +9,8 @@ import type { AppId } from "@/lib/api/types";
  */
 export const PRODUCT_APP_ID: AppId = "codex";
 
+export const APP_DISPLAY_NAME = "CodexPRO Tool";
+
 export const LOCKED_CODEX_PROVIDER = {
   id: "codexpro",
   name: "CodexPRO",

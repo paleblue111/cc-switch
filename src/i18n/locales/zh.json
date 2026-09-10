@@ -1,7 +1,7 @@
 {
   "app": {
-    "title": "CC Switch",
-    "description": "Claude Code / Codex / Gemini CLI 全方位辅助工具"
+    "title": "CodexPRO Tool",
+    "description": "CodexPRO 供应商切换工具"
   },
   "codexPro": {
     "subtitle": "地址已固定，填写 API Key 后保存即可切换到 CodexPRO",
