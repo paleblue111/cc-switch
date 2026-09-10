@@ -63,9 +63,7 @@ fn open_url_via_windows(url: &str) -> Result<(), String> {
     if windows_dir.exists() {
         command.current_dir(windows_dir);
     }
-    let status = command
-        .status()
-        .map_err(|e| format!("打开链接失败: {e}"))?;
+    let status = command.status().map_err(|e| format!("打开链接失败: {e}"))?;
     if status.success() {
         return Ok(());
     }
