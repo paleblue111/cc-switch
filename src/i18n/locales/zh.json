@@ -3,6 +3,18 @@
     "title": "CC Switch",
     "description": "Claude Code / Codex / Gemini CLI 全方位辅助工具"
   },
+  "codexPro": {
+    "subtitle": "地址已固定，填写 API Key 后保存即可切换到 CodexPRO",
+    "apiKey": "API Key",
+    "apiKeyPlaceholder": "sk-...",
+    "baseUrl": "API 地址",
+    "remoteCompaction": "已开启 Enable remote compaction",
+    "saveAndApply": "保存并应用",
+    "applied": "当前已应用",
+    "saved": "CodexPRO 已保存并切换",
+    "keyRequired": "请填写 API Key",
+    "openWebsite": "打开 CodexPRO"
+  },
   "common": {
     "add": "添加",
     "edit": "编辑",
@@ -907,7 +919,7 @@
     "claudeCode": "Claude Code",
     "claudeDesktop": "Claude Desktop",
     "claude-desktop": "Claude Desktop",
-    "codex": "Codex",
+    "codex": "CodexPRO",
     "gemini": "Gemini",
     "grokbuild": "Grok Build",
     "opencode": "OpenCode",

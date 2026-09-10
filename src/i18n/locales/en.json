@@ -3,6 +3,18 @@
     "title": "CC Switch",
     "description": "All-in-One Assistant for Claude Code, Codex & Gemini CLI"
   },
+  "codexPro": {
+    "subtitle": "The endpoint is fixed. Enter an API key, then save to switch to CodexPRO",
+    "apiKey": "API Key",
+    "apiKeyPlaceholder": "sk-...",
+    "baseUrl": "API URL",
+    "remoteCompaction": "Enable remote compaction is on",
+    "saveAndApply": "Save and apply",
+    "applied": "Currently applied",
+    "saved": "CodexPRO saved and switched",
+    "keyRequired": "Please enter an API key",
+    "openWebsite": "Open CodexPRO"
+  },
   "common": {
     "add": "Add",
     "edit": "Edit",
@@ -907,7 +919,7 @@
     "claudeCode": "Claude Code",
     "claudeDesktop": "Claude Desktop",
     "claude-desktop": "Claude Desktop",
-    "codex": "Codex",
+    "codex": "CodexPRO",
     "gemini": "Gemini",
     "grokbuild": "Grok Build",
     "opencode": "OpenCode",

@@ -18,6 +18,70 @@ use std::os::windows::process::CommandExt;
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
+fn is_wsl() -> bool {
+    #[cfg(target_os = "linux")]
+    {
+        std::env::var_os("WSL_DISTRO_NAME").is_some()
+            || std::env::var_os("WSL_INTEROP").is_some()
+            || std::fs::read_to_string("/proc/version")
+                .map(|v| {
+                    let v = v.to_ascii_lowercase();
+                    v.contains("microsoft") || v.contains("wsl")
+                })
+                .unwrap_or(false)
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        false
+    }
+}
+
+fn windows_bin(name: &str) -> String {
+    let candidate = format!("/mnt/c/Windows/System32/{name}");
+    if Path::new(&candidate).exists() {
+        candidate
+    } else {
+        name.to_string()
+    }
+}
+
+fn open_url_via_windows(url: &str) -> Result<(), String> {
+    if std::process::Command::new("wslview")
+        .arg(url)
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+    {
+        return Ok(());
+    }
+
+    // cmd.exe cannot use a WSL UNC path as cwd; start from a Windows directory.
+    let windows_dir = Path::new("/mnt/c/Windows/System32");
+    let cmd = windows_bin("cmd.exe");
+    let mut command = std::process::Command::new(&cmd);
+    command.args(["/c", "start", "", url]);
+    if windows_dir.exists() {
+        command.current_dir(windows_dir);
+    }
+    let status = command
+        .status()
+        .map_err(|e| format!("打开链接失败: {e}"))?;
+    if status.success() {
+        return Ok(());
+    }
+
+    let explorer = windows_bin("explorer.exe");
+    let mut explorer_cmd = std::process::Command::new(explorer);
+    explorer_cmd.arg(url);
+    if windows_dir.exists() {
+        explorer_cmd.current_dir(windows_dir);
+    }
+    explorer_cmd
+        .status()
+        .map_err(|e| format!("打开链接失败: {e}"))?;
+    Ok(())
+}
+
 /// 打开外部链接
 #[tauri::command]
 pub async fn open_external(app: AppHandle, url: String) -> Result<bool, String> {
@@ -26,6 +90,12 @@ pub async fn open_external(app: AppHandle, url: String) -> Result<bool, String> 
     } else {
         format!("https://{url}")
     };
+
+    if is_wsl() {
+        log::info!("WSL detected, opening URL via Windows: {url}");
+        open_url_via_windows(&url)?;
+        return Ok(true);
+    }
 
     app.opener()
         .open_url(&url, None::<String>)

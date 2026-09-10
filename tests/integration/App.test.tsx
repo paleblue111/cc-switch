@@ -1,17 +1,9 @@
 import { Suspense, type ComponentType } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { http, HttpResponse } from "msw";
-import { providersApi } from "@/lib/api/providers";
-import {
-  resetProviderState,
-  setCurrentProviderId,
-  setLiveProviderIds,
-  setProviders,
-} from "../msw/state";
+import { resetProviderState } from "../msw/state";
 import { emitTauriEvent } from "../msw/tauriMocks";
-import { server } from "../msw/server";
 
 const toastSuccessMock = vi.fn();
 const toastErrorMock = vi.fn();
@@ -25,6 +17,10 @@ vi.mock("sonner", () => ({
     success: (...args: unknown[]) => toastSuccessMock(...args),
     error: (...args: unknown[]) => toastErrorMock(...args),
   },
+}));
+
+vi.mock("@/components/providers/CodexProSetup", () => ({
+  CodexProSetup: () => <div data-testid="codex-pro-setup" />,
 }));
 
 vi.mock("@/components/providers/ProviderList", () => ({
@@ -208,72 +204,22 @@ describe("App integration with MSW", () => {
     localStorage.removeItem("cc-switch-last-app");
   });
 
-  it("covers basic provider flows via real hooks", async () => {
+  it("renders the locked CodexPRO setup instead of the provider list", async () => {
     const { default: App } = await import("@/App");
     renderApp(App);
 
-    await waitFor(() =>
-      expect(screen.getByTestId("provider-list").textContent).toContain(
-        "claude-1",
-      ),
-    );
-
-    fireEvent.click(screen.getByText("switch-codex"));
-    await waitFor(() =>
-      expect(screen.getByTestId("provider-list").textContent).toContain(
-        "codex-1",
-      ),
-    );
-
-    fireEvent.click(screen.getByText("usage"));
-    expect(screen.getByTestId("usage-modal")).toBeInTheDocument();
-    fireEvent.click(screen.getByText("save-script"));
-    fireEvent.click(screen.getByText("close-usage"));
-
-    fireEvent.click(screen.getByText("create"));
-    expect(screen.getByTestId("add-provider-dialog")).toBeInTheDocument();
-    fireEvent.click(screen.getByText("confirm-add"));
-    await waitFor(() =>
-      expect(screen.getByTestId("provider-list").textContent).toMatch(
-        /New codex Provider/,
-      ),
-    );
-
-    fireEvent.click(screen.getByText("edit"));
-    expect(screen.getByTestId("edit-provider-dialog")).toBeInTheDocument();
-    fireEvent.click(screen.getByText("confirm-edit"));
-    await waitFor(() =>
-      expect(screen.getByTestId("provider-list").textContent).toMatch(
-        /-edited/,
-      ),
-    );
-
-    fireEvent.click(screen.getByText("switch"));
-    fireEvent.click(screen.getByText("duplicate"));
-    await waitFor(() =>
-      expect(screen.getByTestId("provider-list").textContent).toMatch(/copy/),
-    );
-
-    fireEvent.click(screen.getByText("open-website"));
-
-    emitTauriEvent("provider-switched", {
-      appType: "codex",
-      providerId: "codex-2",
-    });
-
-    expect(toastErrorMock).not.toHaveBeenCalled();
-    expect(toastSuccessMock).toHaveBeenCalled();
-  }, 10_000);
+    expect(await screen.findByTestId("codex-pro-setup")).toBeInTheDocument();
+    expect(screen.queryByTestId("provider-list")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "provider.addNewProvider" }),
+    ).not.toBeInTheDocument();
+  });
 
   it("shows toast when auto sync fails in background", async () => {
     const { default: App } = await import("@/App");
     renderApp(App);
 
-    await waitFor(() =>
-      expect(screen.getByTestId("provider-list").textContent).toContain(
-        "claude-1",
-      ),
-    );
+    expect(await screen.findByTestId("codex-pro-setup")).toBeInTheDocument();
 
     expect(() => {
       emitTauriEvent("webdav-sync-status-updated", null);
@@ -307,174 +253,21 @@ describe("App integration with MSW", () => {
     });
   });
 
-  it("duplicates openclaw providers with a generated key that avoids live-only ids", async () => {
-    setProviders("openclaw", {
-      deepseek: {
-        id: "deepseek",
-        name: "DeepSeek",
-        settingsConfig: {
-          baseUrl: "https://api.deepseek.com",
-          apiKey: "test-key",
-          api: "openai-completions",
-          models: [],
-        },
-        category: "custom",
-        sortIndex: 0,
-        createdAt: Date.now(),
-      },
-    });
-    setCurrentProviderId("openclaw", "deepseek");
-    setLiveProviderIds("openclaw", ["deepseek-copy"]);
-
-    const { default: App } = await import("@/App");
-    renderApp(App);
-
-    fireEvent.click(screen.getByText("switch-openclaw"));
-
-    await waitFor(() =>
-      expect(screen.getByTestId("provider-list").textContent).toContain(
-        "deepseek",
-      ),
-    );
-
-    fireEvent.click(screen.getByText("duplicate"));
-
-    await waitFor(() => {
-      const providerList = screen.getByTestId("provider-list").textContent;
-      expect(providerList).toContain("deepseek-copy-2");
-      expect(providerList).toContain("DeepSeek copy");
-    });
-
-    expect(toastErrorMock).not.toHaveBeenCalledWith(
-      expect.stringContaining("Provider key is required for openclaw"),
-    );
-  });
-
-  it("warns without blocking when removing Pi's global default provider", async () => {
-    localStorage.setItem("cc-switch-last-app", "pi");
-    setProviders("pi", {
-      custom: {
-        id: "custom",
-        name: "Custom Pi",
-        settingsConfig: {
-          baseUrl: "https://api.example.com/v1",
-          apiKey: "test-key",
-          api: "openai-completions",
-          models: [{ id: "model-a" }],
-        },
-        category: "custom",
-        sortIndex: 0,
-        createdAt: Date.now(),
-      },
-    });
-    server.use(
-      http.post("http://tauri.local/get_pi_current_state", () =>
-        HttpResponse.json({
-          enabledProviderIds: ["custom"],
-          defaultProviderId: "custom",
-        }),
-      ),
-    );
-
-    const { default: App } = await import("@/App");
-    renderApp(App);
-
-    await waitFor(() =>
-      expect(screen.getByTestId("provider-list").textContent).toContain(
-        "Custom Pi",
-      ),
-    );
-    fireEvent.click(screen.getByText("remove"));
-
-    expect(screen.getByTestId("confirm-message")).toHaveTextContent(
-      "confirm.piDefaultProviderWarning",
-    );
-    fireEvent.click(screen.getByText("confirm-delete"));
-    await waitFor(() =>
-      expect(screen.queryByTestId("confirm-dialog")).not.toBeInTheDocument(),
-    );
-  });
-
-  it("shows toast when duplicate cannot load live provider ids", async () => {
-    setProviders("openclaw", {
-      deepseek: {
-        id: "deepseek",
-        name: "DeepSeek",
-        settingsConfig: {
-          baseUrl: "https://api.deepseek.com",
-          apiKey: "test-key",
-          api: "openai-completions",
-          models: [],
-        },
-        category: "custom",
-        sortIndex: 0,
-        createdAt: Date.now(),
-      },
-    });
-    setCurrentProviderId("openclaw", "deepseek");
-
-    const liveIdsSpy = vi
-      .spyOn(providersApi, "getOpenClawLiveProviderIds")
-      .mockRejectedValueOnce(new Error("broken config"));
-
-    const { default: App } = await import("@/App");
-    renderApp(App);
-
-    fireEvent.click(screen.getByText("switch-openclaw"));
-
-    await waitFor(() =>
-      expect(screen.getByTestId("provider-list").textContent).toContain(
-        "deepseek",
-      ),
-    );
-
-    fireEvent.click(screen.getByText("duplicate"));
-
-    await waitFor(() => {
-      expect(toastErrorMock).toHaveBeenCalledWith(
-        expect.stringContaining("读取配置中的供应商标识失败"),
-      );
-    });
-
-    expect(screen.getByTestId("provider-list").textContent).not.toContain(
-      "deepseek-copy",
-    );
-
-    liveIdsSpy.mockRestore();
-  });
-
-  it("hosts the Skills check-update action in the App toolbar", async () => {
+  it("stays on Codex providers and ignores other app/view restore", async () => {
+    localStorage.setItem("cc-switch-last-app", "claude");
     localStorage.setItem("cc-switch-last-view", "skills");
+
     const { default: App } = await import("@/App");
     renderApp(App);
 
+    expect(await screen.findByTestId("codex-pro-setup")).toBeInTheDocument();
+    expect(screen.queryByTestId("provider-list")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("app-switcher")).not.toBeInTheDocument();
     expect(
-      await screen.findByTestId("unified-skills-panel"),
-    ).toBeInTheDocument();
-    const checkUpdatesButton = await screen.findByRole("button", {
-      name: "skills.checkUpdates",
-    });
-    await waitFor(() => expect(checkUpdatesButton).toBeEnabled());
-
-    fireEvent.click(checkUpdatesButton);
-    expect(skillsPanelMocks.checkUpdates).toHaveBeenCalledTimes(1);
-  });
-
-  it("routes the Skills discover toolbar action through the panel guard", async () => {
-    localStorage.setItem("cc-switch-last-view", "skills");
-    const { default: App } = await import("@/App");
-    renderApp(App);
-
+      screen.queryByTestId("unified-skills-panel"),
+    ).not.toBeInTheDocument();
     expect(
-      await screen.findByTestId("unified-skills-panel"),
-    ).toBeInTheDocument();
-    fireEvent.click(
-      await screen.findByRole("button", {
-        name: "skills.discover",
-      }),
-    );
-
-    expect(skillsPanelMocks.openDiscovery).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId("unified-skills-panel")).toBeInTheDocument();
+      screen.queryByRole("button", { name: "common.settings" }),
+    ).not.toBeInTheDocument();
   });
 });
