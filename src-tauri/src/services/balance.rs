@@ -1,6 +1,6 @@
 //! 供应商余额查询服务
 //!
-//! 支持 DeepSeek、StepFun、SiliconFlow、OpenRouter、Novita AI 的账户余额查询。
+//! 支持 DeepSeek、StepFun、SiliconFlow、OpenRouter、Novita AI、CodexPRO 的账户余额查询。
 //! 返回 UsageResult 格式，与现有用量系统无缝对接。
 //!
 //! 错误通道语义（与 coding_plan / subscription 两个服务保持一致）：
@@ -21,6 +21,7 @@ enum BalanceProvider {
     SiliconFlowEn,
     OpenRouter,
     NovitaAI,
+    CodexPro,
 }
 
 fn detect_provider(base_url: &str) -> Option<BalanceProvider> {
@@ -37,6 +38,8 @@ fn detect_provider(base_url: &str) -> Option<BalanceProvider> {
         Some(BalanceProvider::OpenRouter)
     } else if url.contains("api.novita.ai") {
         Some(BalanceProvider::NovitaAI)
+    } else if url.contains("codexpro.kdns.fr") {
+        Some(BalanceProvider::CodexPro)
     } else {
         None
     }
@@ -409,6 +412,97 @@ async fn query_novita(api_key: &str) -> Result<UsageResult, String> {
     })
 }
 
+
+// ── CodexPRO (sub2api Key Usage) ────────────────────────────
+// GET {origin}/v1/usage  Authorization: Bearer <api_key>
+// Response includes balance / remaining / unit / planName
+
+fn codexpro_usage_url(base_url: &str) -> String {
+    let trimmed = base_url.trim().trim_end_matches('/');
+    // product baseUrl is https://api.codexpro.kdns.fr/v1
+    if trimmed.ends_with("/v1") {
+        format!("{trimmed}/usage")
+    } else if let Some(origin) = trimmed.strip_suffix("/v1") {
+        format!("{origin}/v1/usage")
+    } else {
+        format!("{trimmed}/v1/usage")
+    }
+}
+
+async fn query_codexpro(base_url: &str, api_key: &str) -> Result<UsageResult, String> {
+    let client = crate::proxy::http_client::get();
+    let url = codexpro_usage_url(base_url);
+
+    let resp = client
+        .get(&url)
+        .header("Authorization", format!("Bearer {api_key}"))
+        .header("Accept", "application/json")
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await;
+
+    let resp = match resp {
+        Ok(r) => r,
+        Err(e) => return Err(format!("Network error: {e}")),
+    };
+
+    let status = resp.status();
+    if status == reqwest::StatusCode::UNAUTHORIZED || status == reqwest::StatusCode::FORBIDDEN {
+        return Ok(make_auth_error(status));
+    }
+    if !status.is_success() {
+        let body = resp.text().await.unwrap_or_default();
+        return Ok(make_error(format!("API error (HTTP {status}): {body}")));
+    }
+
+    let bytes = resp
+        .bytes()
+        .await
+        .map_err(|e| format!("Network error: {e}"))?;
+    let body: serde_json::Value = match serde_json::from_slice(&bytes) {
+        Ok(v) => v,
+        Err(e) => return Ok(make_error(format!("Invalid JSON response: {e}"))),
+    };
+
+    let remaining = parse_f64_field(&body, "remaining")
+        .or_else(|| parse_f64_field(&body, "balance"))
+        .unwrap_or(0.0);
+    // Product UI shows credits, not USD.
+    let unit = "credit".to_string();
+    let plan_name = "credits".to_string();
+    let is_valid = body
+        .get("isValid")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true);
+    let used = body
+        .pointer("/usage/total/actual_cost")
+        .and_then(|v| v.as_f64())
+        .or_else(|| {
+            body.pointer("/usage/total/actual_cost")
+                .and_then(|v| v.as_str())
+                .and_then(|s| s.parse().ok())
+        });
+
+    Ok(UsageResult {
+        success: true,
+        data: Some(vec![UsageData {
+            plan_name: Some(plan_name),
+            remaining: Some(remaining),
+            total: None,
+            used,
+            unit: Some(unit),
+            is_valid: Some(is_valid),
+            invalid_message: if is_valid {
+                None
+            } else {
+                Some("Key invalid or exhausted".to_string())
+            },
+            extra: None,
+        }]),
+        error: None,
+    })
+}
+
 // ── 工具函数 ────────────────────────────────────────────────
 
 /// 解析 JSON 字段为 f64，兼容数字和字符串格式
@@ -450,5 +544,6 @@ pub async fn get_balance(base_url: &str, api_key: &str) -> Result<UsageResult, S
         BalanceProvider::SiliconFlowEn => query_siliconflow(api_key, false).await,
         BalanceProvider::OpenRouter => query_openrouter(api_key).await,
         BalanceProvider::NovitaAI => query_novita(api_key).await,
+        BalanceProvider::CodexPro => query_codexpro(base_url, api_key).await,
     }
 }

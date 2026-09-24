@@ -151,6 +151,10 @@ fn codex_native_gateway_rejects_web_search(config_text: &str) -> bool {
     }
     false
 }
+/// Preferred capability templates when cloning ProxyChat catalogs.
+/// Prefer gpt-6-sol (current Codex official default family), then fall back
+/// through gpt-5.6-sol to the static gpt-5.5 bundle shipped with cc-switch.
+const CODEX_MODEL_CATALOG_TEMPLATE_SLUGS: &[&str] = &["gpt-6-sol", "gpt-5.6-sol", "gpt-5.5"];
 const CODEX_MODEL_CATALOG_TEMPLATE_SLUG: &str = "gpt-5.5";
 const CODEX_MANAGED_OAUTH_LIVE_AUTH_MARKER_FILENAME: &str = "codex_managed_oauth_live_auth.json";
 
@@ -1677,10 +1681,11 @@ struct CodexCatalogModelSpec {
 }
 
 fn codex_catalog_model_specs(settings: &Value) -> Vec<CodexCatalogModelSpec> {
-    let Some(models) = settings
-        .get("modelCatalog")
+    let catalog = settings.get("modelCatalog");
+    let Some(models) = catalog
         .and_then(|catalog| catalog.get("models"))
         .and_then(|models| models.as_array())
+        .or_else(|| catalog.and_then(|value| value.as_array()))
     else {
         return Vec::new();
     };
@@ -1778,16 +1783,15 @@ fn codex_catalog_model_specs(settings: &Value) -> Vec<CodexCatalogModelSpec> {
 }
 
 fn find_codex_model_template(catalog: &Value) -> Option<Value> {
-    catalog
-        .get("models")
-        .and_then(|models| models.as_array())
-        .and_then(|models| {
-            models.iter().find(|model| {
-                model.get("slug").and_then(|slug| slug.as_str())
-                    == Some(CODEX_MODEL_CATALOG_TEMPLATE_SLUG)
-            })
-        })
-        .cloned()
+    let models = catalog.get("models").and_then(|models| models.as_array())?;
+    for slug in CODEX_MODEL_CATALOG_TEMPLATE_SLUGS {
+        if let Some(model) = models.iter().find(|model| {
+            model.get("slug").and_then(|value| value.as_str()) == Some(*slug)
+        }) {
+            return Some(model.clone());
+        }
+    }
+    None
 }
 
 fn load_codex_model_template_from_cache() -> Result<Option<Value>, AppError> {
@@ -2279,7 +2283,29 @@ fn codex_model_catalog_from_settings(
     config_text: &str,
     profile: CodexCatalogToolProfile,
 ) -> Result<Option<Value>, AppError> {
-    let specs = codex_catalog_model_specs(settings);
+    let mut specs = codex_catalog_model_specs(settings);
+    // If a catalog is being written, always include the live default `model`
+    // so bumping presets to gpt-6-sol cannot leave it out of a stale table
+    // that still only lists gpt-5.6-sol.
+    if !specs.is_empty() {
+        if let Some(model) = codex_top_level_model(config_text) {
+            if !specs.iter().any(|spec| spec.model == model) {
+                specs.insert(
+                    0,
+                    CodexCatalogModelSpec {
+                        model,
+                        display_name: None,
+                        context_window: None,
+                        supports_parallel_tool_calls: None,
+                        input_modalities: None,
+                        base_instructions: None,
+                        reasoning_levels: None,
+                        default_reasoning_level: None,
+                    },
+                );
+            }
+        }
+    }
     if specs.is_empty() {
         return Ok(None);
     }
@@ -6755,6 +6781,83 @@ base_url = "https://production.api/v1"
                 .and_then(Value::as_bool),
             Some(true)
         );
+    }
+
+    #[test]
+    fn codex_model_catalog_projects_gpt6_sol_and_full_provider_list() {
+        let template = json!({
+            "slug": "gpt-6-sol",
+            "display_name": "GPT-6 Sol",
+            "description": "Frontier model",
+            "base_instructions": "gpt-6-sol base instructions",
+            "context_window": 400000,
+            "max_context_window": 400000,
+            "default_reasoning_level": "medium",
+            "supported_reasoning_levels": [
+                {"effort": "low", "description": "Low"},
+                {"effort": "medium", "description": "Medium"},
+                {"effort": "high", "description": "High"}
+            ]
+        });
+        // Bare-array shape (frontend preset) plus an object-shaped sibling via
+        // the ordinary {models:[...]} path is covered by the object form here.
+        let settings = json!({
+            "modelCatalog": {
+                "models": [
+                    {"model": "gpt-6-sol", "displayName": "GPT-6 Sol"},
+                    {"model": "gpt-6-luna"},
+                    {"model": "gpt-5.6-sol"},
+                    {"model": "extra-relay-model"}
+                ]
+            }
+        });
+        let specs = codex_catalog_model_specs(&settings);
+        let catalog = codex_model_catalog_from_specs(
+            &specs,
+            &template,
+            CodexCatalogToolProfile::NativeResponses,
+            128_000,
+        );
+        let models = catalog
+            .get("models")
+            .and_then(|value| value.as_array())
+            .expect("models should be an array");
+        let slugs: Vec<&str> = models
+            .iter()
+            .filter_map(|entry| entry.get("slug").and_then(|value| value.as_str()))
+            .collect();
+        assert_eq!(
+            slugs,
+            vec![
+                "gpt-6-sol",
+                "gpt-6-luna",
+                "gpt-5.6-sol",
+                "extra-relay-model"
+            ]
+        );
+
+        // Stale catalog missing the live default must still pick up gpt-6-sol.
+        let stale_settings = json!({
+            "modelCatalog": {
+                "models": [{"model": "gpt-5.6-sol"}]
+            }
+        });
+        let generated = codex_model_catalog_from_settings(
+            &stale_settings,
+            "model = \"gpt-6-sol\"\n",
+            CodexCatalogToolProfile::NativeResponses,
+        )
+        .expect("catalog generation")
+        .expect("catalog present");
+        let generated_slugs: Vec<&str> = generated
+            .get("models")
+            .and_then(|value| value.as_array())
+            .expect("models")
+            .iter()
+            .filter_map(|entry| entry.get("slug").and_then(|value| value.as_str()))
+            .collect();
+        assert_eq!(generated_slugs.first().copied(), Some("gpt-6-sol"));
+        assert!(generated_slugs.contains(&"gpt-5.6-sol"));
     }
 
     #[test]

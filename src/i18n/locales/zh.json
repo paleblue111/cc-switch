@@ -4,7 +4,7 @@
     "description": "CodexPRO 供应商切换工具"
   },
   "codexPro": {
-    "subtitle": "地址已固定，填写 API Key 后保存即可切换到 CodexPRO",
+    "subtitle": "输入 API Key 以配置 CodexPRO",
     "apiKey": "API Key",
     "apiKeyPlaceholder": "sk-...",
     "baseUrl": "API 地址",
@@ -13,7 +13,14 @@
     "applied": "当前已应用",
     "saved": "CodexPRO 已保存并切换",
     "keyRequired": "请填写 API Key",
-    "openWebsite": "打开 CodexPRO"
+    "openWebsite": "打开 CodexPRO",
+    "balance": "积分",
+    "balanceQueryFailed": "积分查询失败",
+    "refreshBalance": "刷新",
+    "credits": "积分",
+    "creditUnit": "积分",
+    "switchToChinese": "中文",
+    "switchToEnglish": "English"
   },
   "common": {
     "add": "添加",
@@ -1565,7 +1572,7 @@
     "modelMetadataAdvanced": "模型元数据高级选项",
     "modelMetadataAdvancedHint": "用于未知模型的 Codex 元数据覆盖；清空字段会从 config.toml 删除对应配置。",
     "defaultModelLabel": "默认模型",
-    "defaultModelPlaceholder": "例如: gpt-5.6-sol",
+    "defaultModelPlaceholder": "例如: gpt-6-sol",
     "defaultModelHint": "Codex 默认请求的模型，随时可改，无需等待预设更新。留空且配置了模型映射时，默认使用映射第一行。",
     "defaultModelNotInCatalog": "该模型不在模型映射中，Codex 的 /model 菜单不会列出它（直接请求仍然有效）。",
     "addToModelMapping": "加入映射",

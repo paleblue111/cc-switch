@@ -4,7 +4,7 @@
     "description": "Claude Code・Codex・Gemini CLI のためのオールインワンアシスタント"
   },
   "codexPro": {
-    "subtitle": "エンドポイントは固定です。API Key を入力して保存すると CodexPRO に切り替わります",
+    "subtitle": "API Key を入力して CodexPRO を設定します",
     "apiKey": "API Key",
     "apiKeyPlaceholder": "sk-...",
     "baseUrl": "API URL",
@@ -13,7 +13,14 @@
     "applied": "適用中",
     "saved": "CodexPRO を保存して切り替えました",
     "keyRequired": "API Key を入力してください",
-    "openWebsite": "CodexPRO を開く"
+    "openWebsite": "CodexPRO を開く",
+    "balance": "クレジット",
+    "balanceQueryFailed": "クレジットの照会に失敗しました",
+    "refreshBalance": "更新",
+    "credits": "クレジット",
+    "creditUnit": "credit",
+    "switchToChinese": "中文",
+    "switchToEnglish": "English"
   },
   "common": {
     "add": "追加",

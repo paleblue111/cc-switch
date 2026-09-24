@@ -23,6 +23,10 @@ jobs:
           - os: windows-11-arm
             arch: arm64
           - os: macos-14
+          - os: ubuntu-22.04
+            arch: x86_64
+          - os: ubuntu-24.04-arm
+            arch: arm64
 
     steps:
       - name: Checkout
@@ -35,6 +39,20 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+
+
+      - name: Install Linux system deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config libssl-dev \
+            libgtk-3-dev librsvg2-dev libayatana-appindicator3-dev \
+            patchelf
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev \
+            || sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.0-dev
+          sudo apt-get install -y --no-install-recommends libsoup-3.0-dev \
+            || sudo apt-get install -y --no-install-recommends libsoup2.4-dev
 
       - name: Add Windows ARM64 target
         if: runner.os == 'Windows' && matrix.arch == 'arm64'
@@ -103,6 +121,13 @@ jobs:
           } else {
             pnpm tauri build --bundles msi
           }
+
+
+      - name: Build Tauri App (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        timeout-minutes: 60
+        run: pnpm tauri build --bundles deb,appimage
 
       - name: Prepare macOS Assets
         if: runner.os == 'macOS'
@@ -220,6 +245,41 @@ jobs:
             throw 'Portable exe not found'
           }
 
+
+      - name: Prepare Linux Assets
+        if: runner.os == 'Linux'
+        shell: bash
+        env:
+          LINUX_RELEASE_ARCH: ${{ matrix.arch || 'x86_64' }}
+        run: |
+          set -euxo pipefail
+          mkdir -p release-assets
+          VERSION="${GITHUB_REF_NAME}"
+          ARCH_SUFFIX=""
+          if [ "${LINUX_RELEASE_ARCH}" = "arm64" ]; then
+            ARCH_SUFFIX="-arm64"
+          fi
+
+          DEB=$(find src-tauri/target -path '*/bundle/deb/*.deb' -type f | head -1 || true)
+          if [ -n "$DEB" ]; then
+            DEST="CodexPRO-Tool-${VERSION}-Linux${ARCH_SUFFIX}.deb"
+            cp "$DEB" "release-assets/$DEST"
+            echo "Copied deb: $DEST"
+          else
+            echo "❌ No .deb found" >&2
+            find src-tauri/target -maxdepth 6 -type f -name '*.deb' -o -name '*.AppImage' 2>/dev/null || true
+            exit 1
+          fi
+
+          APPIMAGE=$(find src-tauri/target -path '*/bundle/appimage/*.AppImage' -type f | head -1 || true)
+          if [ -n "$APPIMAGE" ]; then
+            DEST="CodexPRO-Tool-${VERSION}-Linux${ARCH_SUFFIX}.AppImage"
+            cp "$APPIMAGE" "release-assets/$DEST"
+            echo "Copied AppImage: $DEST"
+          else
+            echo "⚠️ No AppImage found; deb is still available"
+          fi
+
       - name: List prepared assets
         shell: bash
         run: ls -la release-assets
@@ -234,7 +294,7 @@ jobs:
       - name: List generated bundles (debug)
         if: always()
         shell: bash
-        run: find src-tauri/target -maxdepth 5 -type f \( -name "*.msi" -o -name "*.exe" -o -name "*.dmg" -o -name "*.app" -o -name "*.zip" \) 2>/dev/null || true
+        run: find src-tauri/target -maxdepth 6 -type f \( -name "*.msi" -o -name "*.exe" -o -name "*.dmg" -o -name "*.app" -o -name "*.zip" -o -name "*.deb" -o -name "*.AppImage" \) 2>/dev/null || true
 
   publish-release:
     name: Publish GitHub Release
@@ -270,6 +330,8 @@ jobs:
             - **macOS (Apple Silicon / Intel, unsigned)**: `CodexPRO-Tool-${{ github.ref_name }}-macOS.dmg` or `.zip`
             - **Windows (x86_64)**: `CodexPRO-Tool-${{ github.ref_name }}-Windows.msi` or `CodexPRO-Tool-${{ github.ref_name }}-Windows-Portable.zip`
             - **Windows (ARM64)**: `CodexPRO-Tool-${{ github.ref_name }}-Windows-arm64.msi` or `CodexPRO-Tool-${{ github.ref_name }}-Windows-arm64-Portable.zip`
+            - **Linux (x86_64)**: `CodexPRO-Tool-${{ github.ref_name }}-Linux.deb` or `.AppImage`
+            - **Linux (ARM64)**: `CodexPRO-Tool-${{ github.ref_name }}-Linux-arm64.deb` or `.AppImage`
 
             macOS build is **not Apple-signed**. First open: right-click the app → Open, or run `xattr -cr "/Applications/CodexPRO Tool.app"`.
           files: release-assets/*

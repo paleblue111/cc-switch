@@ -4,7 +4,7 @@
     "description": "All-in-One Assistant for Claude Code, Codex & Gemini CLI"
   },
   "codexPro": {
-    "subtitle": "The endpoint is fixed. Enter an API key, then save to switch to CodexPRO",
+    "subtitle": "Enter your API key to configure CodexPRO",
     "apiKey": "API Key",
     "apiKeyPlaceholder": "sk-...",
     "baseUrl": "API URL",
@@ -13,7 +13,14 @@
     "applied": "Currently applied",
     "saved": "CodexPRO saved and switched",
     "keyRequired": "Please enter an API key",
-    "openWebsite": "Open CodexPRO"
+    "openWebsite": "Open CodexPRO",
+    "balance": "Credits",
+    "balanceQueryFailed": "Failed to query credits",
+    "refreshBalance": "Refresh",
+    "credits": "Credits",
+    "creditUnit": "credit",
+    "switchToChinese": "中文",
+    "switchToEnglish": "English"
   },
   "common": {
     "add": "Add",
@@ -1565,7 +1572,7 @@
     "modelMetadataAdvanced": "Model Metadata Advanced Options",
     "modelMetadataAdvancedHint": "Overrides Codex metadata for unknown models; clearing a field removes the matching config.toml entry.",
     "defaultModelLabel": "Default Model",
-    "defaultModelPlaceholder": "e.g. gpt-5.6-sol",
+    "defaultModelPlaceholder": "e.g. gpt-6-sol",
     "defaultModelHint": "The model Codex requests by default; change it anytime without waiting for a preset update. If left empty while model mapping is configured, the first mapping row is used.",
     "defaultModelNotInCatalog": "This model is not in the model mapping, so the Codex /model menu won't list it (direct requests still work).",
     "addToModelMapping": "Add to mapping",

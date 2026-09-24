@@ -8,9 +8,10 @@ import zhTW from "./locales/zh-TW.json";
 
 type Language = "zh" | "zh-TW" | "en" | "ja";
 
-const DEFAULT_LANGUAGE: Language = "zh";
+const DEFAULT_LANGUAGE: Language = "en";
 
 const getInitialLanguage = (): Language => {
+  // CodexPRO internal build: English by default; only honor an explicit stored choice.
   if (typeof window !== "undefined") {
     try {
       const stored = window.localStorage.getItem("language");
@@ -25,37 +26,6 @@ const getInitialLanguage = (): Language => {
     } catch (error) {
       console.warn("[i18n] Failed to read stored language preference", error);
     }
-  }
-
-  const navigatorLang =
-    typeof navigator !== "undefined"
-      ? (navigator.language?.toLowerCase() ??
-        navigator.languages?.[0]?.toLowerCase())
-      : undefined;
-
-  if (navigatorLang === "zh") {
-    return "zh";
-  }
-
-  if (
-    navigatorLang?.startsWith("zh-tw") ||
-    navigatorLang?.startsWith("zh-hk") ||
-    navigatorLang?.startsWith("zh-mo") ||
-    navigatorLang?.startsWith("zh-hant")
-  ) {
-    return "zh-TW";
-  }
-
-  if (navigatorLang?.startsWith("zh")) {
-    return "zh";
-  }
-
-  if (navigatorLang?.startsWith("ja")) {
-    return "ja";
-  }
-
-  if (navigatorLang?.startsWith("en")) {
-    return "en";
   }
 
   return DEFAULT_LANGUAGE;

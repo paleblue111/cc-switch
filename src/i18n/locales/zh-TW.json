@@ -4,7 +4,7 @@
     "description": "Claude Code / Codex / Gemini CLI 全方位輔助工具"
   },
   "codexPro": {
-    "subtitle": "位址已固定，填寫 API Key 後儲存即可切換到 CodexPRO",
+    "subtitle": "輸入 API Key 以設定 CodexPRO",
     "apiKey": "API Key",
     "apiKeyPlaceholder": "sk-...",
     "baseUrl": "API 位址",
@@ -13,7 +13,14 @@
     "applied": "目前已套用",
     "saved": "CodexPRO 已儲存並切換",
     "keyRequired": "請填寫 API Key",
-    "openWebsite": "開啟 CodexPRO"
+    "openWebsite": "開啟 CodexPRO",
+    "balance": "積分",
+    "balanceQueryFailed": "積分查詢失敗",
+    "refreshBalance": "重新整理",
+    "credits": "積分",
+    "creditUnit": "積分",
+    "switchToChinese": "中文",
+    "switchToEnglish": "English"
   },
   "common": {
     "add": "新增",
@@ -1560,7 +1567,7 @@
     "promptCacheRoutingDisabled": "關閉",
     "promptCacheRoutingHint": "自動模式僅對已確認相容的上游傳送 prompt_cache_key；開啟可用於其他相容閘道，關閉可避免嚴格閘道因未知欄位回傳 400。只使用客戶端提供的穩定工作階段 ID。",
     "defaultModelLabel": "預設模型",
-    "defaultModelPlaceholder": "例如: gpt-5.6-sol",
+    "defaultModelPlaceholder": "例如: gpt-6-sol",
     "defaultModelHint": "Codex 預設請求的模型，隨時可改，無需等待軟體更新供應商範本。留空且設定了模型映射時，預設使用映射第一行。",
     "defaultModelNotInCatalog": "該模型不在模型映射中，Codex 的 /model 選單不會列出它（直接請求仍然有效）。",
     "addToModelMapping": "加入映射",

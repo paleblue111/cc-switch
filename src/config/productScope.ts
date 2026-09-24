@@ -3,8 +3,8 @@ import type { AppId } from "@/lib/api/types";
 /**
  * Frontend product surface for this fork.
  *
- * Backend commands and unused UI modules stay in the repo, but the shell
- * only enables Codex provider switching. Flip these flags to re-enable
+ * Single-page app: only the CodexPRO setup screen is shown. Backend commands
+ * and unused UI modules stay in the repo; flip PRODUCT_UI flags to re-enable
  * surfaces without restoring Rust.
  */
 export const PRODUCT_APP_ID: AppId = "codex";

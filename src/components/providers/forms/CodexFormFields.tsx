@@ -687,6 +687,26 @@ export function CodexFormFields({
     ]);
   }, [onCatalogModelsChange, trimmedDefaultModel]);
 
+  // Project every /v1/models id into the Codex mapping table so
+  // model_catalog_json is not stuck on a single hardcoded default.
+  const handleAddAllFetchedToCatalog = useCallback(() => {
+    if (!onCatalogModelsChange || fetchedModels.length === 0) return;
+    setCatalogRows((current) => {
+      const seen = new Set(
+        current.map((row) => row.model.trim()).filter(Boolean),
+      );
+      const additions = fetchedModels
+        .map((model) => model.id.trim())
+        .filter((id) => id && !seen.has(id))
+        .map((id) => {
+          seen.add(id);
+          return createCatalogRow({ model: id, displayName: id });
+        });
+      if (additions.length === 0) return current;
+      return [...current, ...additions];
+    });
+  }, [fetchedModels, onCatalogModelsChange]);
+
   const renderCatalogActionButtons = (onAdd: () => void, addLabel: string) => (
     <div className="flex gap-1">
       <Button
@@ -704,6 +724,21 @@ export function CodexFormFields({
         )}
         {t("providerForm.fetchModels")}
       </Button>
+      {fetchedModels.length > 0 && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleAddAllFetchedToCatalog}
+          className="h-7 gap-1"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          {t("codexConfig.addAllFetchedModels", {
+            defaultValue: "加入全部拉取的模型",
+            count: fetchedModels.length,
+          })}
+        </Button>
+      )}
       <Button
         type="button"
         variant="outline"

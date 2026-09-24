@@ -40,9 +40,17 @@ describe("SubRouter provider presets", () => {
     expect(preset?.endpointCandidates).toEqual(["https://subrouter.ai/v1"]);
     expect(preset?.auth).toEqual({ OPENAI_API_KEY: "" });
     expect(preset?.config).toContain('name = "subrouter"');
-    expect(preset?.config).toContain('model = "gpt-5.6-sol"');
+    expect(preset?.config).toContain('model = "gpt-6-sol"');
     expect(preset?.config).toContain('base_url = "https://subrouter.ai/v1"');
     expect(preset?.config).toContain('wire_api = "responses"');
+    expect(preset?.modelCatalog?.map((entry) => entry.model)).toEqual([
+      "gpt-6-sol",
+      "gpt-6-luna",
+      "gpt-6-astra",
+      "gpt-5.6-sol",
+      "gpt-5.6-luna",
+      "gpt-5.6-terra",
+    ]);
   });
 
   it("uses the Gemini-compatible v1beta endpoint for Gemini", () => {

@@ -5,6 +5,8 @@ import {
 } from "@/config/codexProviderPresets";
 import { setCodexRemoteCompaction } from "@/utils/providerConfigUtils";
 import { LOCKED_CODEX_PROVIDER } from "@/config/productScope";
+import { createUsageScript } from "@/types";
+import { TEMPLATE_TYPES } from "@/config/constants";
 
 export function findLockedCodexProvider(
   providers: Record<string, Provider>,
@@ -48,6 +50,17 @@ export function buildCodexProProvider(
     settingsConfig: {
       auth: generateThirdPartyAuth(apiKey),
       config: buildCodexProConfig(),
+    },
+    meta: {
+      ...(existing?.meta ?? {}),
+      usage_script: createUsageScript({
+        enabled: true,
+        language: "javascript",
+        templateType: TEMPLATE_TYPES.BALANCE,
+        autoQueryInterval: 5,
+        baseUrl: LOCKED_CODEX_PROVIDER.baseUrl,
+        code: "",
+      }),
     },
   };
 }

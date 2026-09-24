@@ -1187,6 +1187,70 @@ function App() {
     );
   };
 
+  // Internal CodexPRO build: one setup page only — no settings / provider list / panels.
+  if (!PRODUCT_UI.providerList) {
+    return (
+      <div
+        className="flex flex-col h-screen overflow-hidden text-foreground selection:bg-primary/30"
+        style={{ overflowX: "hidden", paddingTop: contentTopOffset, backgroundColor: "#F7F7F8" }}
+      >
+        {(dragBarHeight > 0 || useAppWindowControls) && (
+          <div
+            className="fixed top-0 left-0 right-0 z-[70] flex items-center justify-end px-2"
+            data-tauri-drag-region
+            style={{ WebkitAppRegion: "drag", height: dragBarHeight } as any}
+          >
+            {useAppWindowControls && (
+              <div
+                className="flex items-center gap-1"
+                style={{ WebkitAppRegion: "no-drag" } as any}
+              >
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => void handleWindowMinimize()}
+                  title={t("header.windowMinimize")}
+                  className="h-7 w-7"
+                >
+                  <Minus className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => void handleWindowToggleMaximize()}
+                  title={
+                    isWindowMaximized
+                      ? t("header.windowRestore")
+                      : t("header.windowMaximize")
+                  }
+                  className="h-7 w-7"
+                >
+                  {isWindowMaximized ? (
+                    <Minimize2 className="w-4 h-4" />
+                  ) : (
+                    <Maximize2 className="w-4 h-4" />
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => void handleWindowClose()}
+                  title={t("header.windowClose")}
+                  className="h-7 w-7 hover:bg-red-500/15 hover:text-red-500"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <CodexProSetup />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="flex flex-col h-screen overflow-hidden bg-background text-foreground selection:bg-primary/30 pb-4"
