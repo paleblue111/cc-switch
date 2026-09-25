@@ -134,8 +134,15 @@ export function DatabaseUpgrade({ payload }: DatabaseUpgradeProps) {
   const AccentIcon = accent.Icon;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-6 text-foreground">
-      <div className="w-full max-w-lg space-y-5 rounded-2xl border border-border/60 bg-card/80 p-7 shadow-xl">
+    <div
+      className="flex min-h-screen flex-col text-foreground"
+      style={{
+        fontFamily:
+          'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        backgroundColor: "#F7F7F8",
+      }}
+    >
+      <div className="mx-auto flex w-full max-w-[420px] flex-1 flex-col space-y-5 px-6 py-6">
         <div className="flex items-start gap-4">
           <div
             className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${accent.chip}`}
@@ -143,13 +150,13 @@ export function DatabaseUpgrade({ payload }: DatabaseUpgradeProps) {
             <AccentIcon className="h-6 w-6" />
           </div>
           <div className="space-y-1">
-            <h1 className="text-lg font-semibold">
+            <h1 className="text-lg font-semibold text-[#18181B]">
               {t("dbUpgrade.title", "数据库版本过新")}
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-[#71717A]">
               {t(
                 "dbUpgrade.description",
-                "当前数据库由更新版本的 CC Switch 创建，需要升级应用后才能继续使用。升级不会删除你的数据。",
+                "当前数据库由更新版本的 CodexPRO Tool 创建，需要升级应用后才能继续使用。升级不会删除你的数据。",
               )}
             </p>
             {dbVersion != null && supportedVersion != null && (
@@ -165,7 +172,7 @@ export function DatabaseUpgrade({ payload }: DatabaseUpgradeProps) {
         </div>
 
         {/* 错误详情 / 数据库路径 */}
-        <div className="space-y-1 rounded-lg border border-border/50 bg-muted/40 p-3 text-xs text-muted-foreground">
+        <div className="space-y-1 rounded-[10px] border border-[#E4E4E7] bg-[#FAFAFA] p-3 text-xs text-[#71717A]">
           {payload.error && (
             <p className="break-words font-mono">{payload.error}</p>
           )}

@@ -218,7 +218,7 @@ export function CodexProSetup() {
       }}
     >
       {/* Single flat surface — no floating card */}
-      <div className="mx-auto flex w-full max-w-[440px] flex-1 flex-col px-5 pb-5 pt-4">
+      <div className="mx-auto flex w-full max-w-[400px] flex-1 flex-col px-6 pb-6 pt-5">
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">

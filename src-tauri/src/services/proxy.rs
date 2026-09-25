@@ -365,7 +365,7 @@ impl CodexAuthFileTransaction {
             .and_then(|name| name.to_str())
             .unwrap_or("auth.json");
         Ok(parent.join(format!(
-            ".{file_name}.cc-switch-{label}-{}",
+            ".{file_name}.codexpro-{label}-{}",
             uuid::Uuid::new_v4()
         )))
     }
@@ -9115,7 +9115,7 @@ requires_openai_auth = true
         let catalog_path = crate::codex_config::get_codex_model_catalog_path();
         assert!(
             catalog_path.exists(),
-            "cc-switch-model-catalog.json must be created on provider switch"
+            "codexpro-model-catalog.json must be created on provider switch"
         );
         let catalog_text = std::fs::read_to_string(&catalog_path).expect("read catalog json");
         let catalog: serde_json::Value =
@@ -9259,7 +9259,7 @@ requires_openai_auth = true
             message.contains("写入 Codex 配置失败")
                 || message.contains("原子替换失败")
                 || (message.contains("捕获 Codex 热切换前状态失败")
-                    && message.contains("cc-switch-model-catalog.json")),
+                    && message.contains("codexpro-model-catalog.json")),
             "switch should surface catalog write failure, got: {message}"
         );
     }
