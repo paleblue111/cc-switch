@@ -51,6 +51,7 @@ static TRAY_SECTION_SUBMENUS: Lazy<
 /// 托盘菜单文本（国际化）
 #[derive(Clone, Copy)]
 pub struct TrayTexts {
+    pub show_main: &'static str,
     pub quit: &'static str,
 }
 
@@ -92,10 +93,22 @@ fn detect_system_tray_language() -> &'static str {
 impl TrayTexts {
     pub fn from_language(language: &str) -> Self {
         match language {
-            "en" => Self { quit: "Quit" },
-            "ja" => Self { quit: "終了" },
-            "zh-TW" => Self { quit: "退出" },
-            _ => Self { quit: "退出" },
+            "en" => Self {
+                show_main: "Show",
+                quit: "Quit",
+            },
+            "ja" => Self {
+                show_main: "メイン画面を開く",
+                quit: "終了",
+            },
+            "zh-TW" => Self {
+                show_main: "打開主界面",
+                quit: "退出",
+            },
+            _ => Self {
+                show_main: "打开主界面",
+                quit: "退出",
+            },
         }
     }
 }
@@ -113,7 +126,7 @@ pub struct TrayAppSection {
 pub const AUTO_SUFFIX: &str = "auto";
 pub const TRAY_ID: &str = "codexpro-tool";
 
-/// 内部产品：托盘菜单仅保留「退出」，隐藏官网/供应商切换等 CC Switch 痕迹。
+/// 内部产品：托盘菜单仅保留「打开主界面」+「退出」，隐藏官网/供应商切换等 CC Switch 痕迹。
 pub const PRODUCT_TRAY_QUIT_ONLY: bool = true;
 
 pub const TRAY_SECTIONS: [TrayAppSection; 4] = [
@@ -649,7 +662,7 @@ fn handle_provider_click(
 
 /// 创建动态托盘菜单
 ///
-/// CodexPRO 内部二次开发：provider 已锁定，托盘只保留「退出」。
+/// CodexPRO 内部二次开发：provider 已锁定，托盘只保留「打开主界面」+「退出」。
 /// 完整供应商/官网/轻量模式菜单仍保留在 git 历史中，需要时可恢复。
 pub fn create_tray_menu(
     app: &tauri::AppHandle,
@@ -662,12 +675,16 @@ pub fn create_tray_menu(
     };
     let tray_texts = TrayTexts::from_language(language);
 
-    // 编译期锁定：本 fork 托盘仅退出
+    // 编译期锁定：本 fork 托盘仅 Show + Quit（无供应商切换/官网等）
     const _: () = assert!(PRODUCT_TRAY_QUIT_ONLY);
 
+    let show_main_item =
+        MenuItem::with_id(app, "show_main", tray_texts.show_main, true, None::<&str>)
+            .map_err(|e| AppError::Message(format!("创建打开主界面菜单失败: {e}")))?;
     let quit_item = MenuItem::with_id(app, "quit", tray_texts.quit, true, None::<&str>)
         .map_err(|e| AppError::Message(format!("创建退出菜单失败: {e}")))?;
     let menu = MenuBuilder::new(app)
+        .item(&show_main_item)
         .item(&quit_item)
         .build()
         .map_err(|e| AppError::Message(format!("构建菜单失败: {e}")))?;
@@ -748,33 +765,38 @@ pub fn apply_tray_policy(app: &tauri::AppHandle, dock_visible: bool) {
     }
 }
 
+/// 将主窗口置于前台（托盘左键 / 菜单「打开主界面」共用）。
+pub fn show_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        #[cfg(target_os = "windows")]
+        {
+            let _ = window.set_skip_taskbar(false);
+        }
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+        #[cfg(target_os = "linux")]
+        {
+            crate::linux_fix::nudge_main_window(window.clone());
+        }
+        #[cfg(target_os = "macos")]
+        {
+            apply_tray_policy(app, true);
+        }
+    } else if crate::lightweight::is_lightweight_mode() {
+        if let Err(e) = crate::lightweight::exit_lightweight_mode(app) {
+            log::error!("退出轻量模式重建窗口失败: {e}");
+        }
+    }
+}
+
 /// 处理托盘菜单事件
 pub fn handle_tray_menu_event(app: &tauri::AppHandle, event_id: &str) {
     log::info!("处理托盘菜单事件: {event_id}");
 
     match event_id {
         "show_main" => {
-            if let Some(window) = app.get_webview_window("main") {
-                #[cfg(target_os = "windows")]
-                {
-                    let _ = window.set_skip_taskbar(false);
-                }
-                let _ = window.unminimize();
-                let _ = window.show();
-                let _ = window.set_focus();
-                #[cfg(target_os = "linux")]
-                {
-                    crate::linux_fix::nudge_main_window(window.clone());
-                }
-                #[cfg(target_os = "macos")]
-                {
-                    apply_tray_policy(app, true);
-                }
-            } else if crate::lightweight::is_lightweight_mode() {
-                if let Err(e) = crate::lightweight::exit_lightweight_mode(app) {
-                    log::error!("退出轻量模式重建窗口失败: {e}");
-                }
-            }
+            show_main_window(app);
         }
         "open_website" => {
             if let Err(e) = app.opener().open_url("https://api.codexpro.kdns.fr/", None::<String>) {
@@ -949,6 +971,23 @@ mod tests {
         assert_eq!(TRAY_ID, "codexpro-tool");
         assert!(PRODUCT_TRAY_QUIT_ONLY);
         assert_ne!(TRAY_ID, "main");
+    }
+
+    #[test]
+    fn tray_texts_include_show_main_and_quit() {
+        use super::TrayTexts;
+        let en = TrayTexts::from_language("en");
+        assert_eq!(en.show_main, "Show");
+        assert_eq!(en.quit, "Quit");
+        let ja = TrayTexts::from_language("ja");
+        assert_eq!(ja.show_main, "メイン画面を開く");
+        assert_eq!(ja.quit, "終了");
+        let zh_tw = TrayTexts::from_language("zh-TW");
+        assert_eq!(zh_tw.show_main, "打開主界面");
+        assert_eq!(zh_tw.quit, "退出");
+        let zh = TrayTexts::from_language("zh");
+        assert_eq!(zh.show_main, "打开主界面");
+        assert_eq!(zh.quit, "退出");
     }
 
     #[test]

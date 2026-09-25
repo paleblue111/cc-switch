@@ -77,7 +77,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::{fmt, sync::Arc};
 #[cfg(target_os = "macos")]
 use tauri::image::Image;
-use tauri::tray::{TrayIconBuilder, TrayIconEvent};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::RunEvent;
 use tauri::{Emitter, Manager};
 use tauri_plugin_window_state::{AppHandleExt, StateFlags};
@@ -1068,17 +1068,32 @@ pub fn run() {
             let menu = tray::create_tray_menu(app.handle(), &app_state)?;
 
             // 构建托盘
+            // 左键：显示/聚焦主窗口（不弹菜单）；右键：上下文菜单（Show + Quit）
             let mut tray_builder = TrayIconBuilder::with_id(tray::TRAY_ID)
                 .tooltip("CodexPRO Tool") // 鼠标悬停提示
                 .on_tray_icon_event(|tray, event| match event {
                     // 鼠标悬停/点击到托盘图标时，后台异步刷新用量缓存，
                     // 让用户下一次（或快速打开菜单的那一刻）看到较新的数字。
-                    // refresh_all_usage_in_tray 内部有 10 秒防抖。
-                    TrayIconEvent::Enter { .. } | TrayIconEvent::Click { .. } => {
+                    // refresh_all_usage_in_tray 内部有 10 秒防抖；不阻塞 show。
+                    TrayIconEvent::Enter { .. } => {
                         let app = tray.app_handle().clone();
                         tauri::async_runtime::spawn(async move {
                             crate::tray::refresh_all_usage_in_tray(&app).await;
                         });
+                    }
+                    TrayIconEvent::Click {
+                        button,
+                        button_state,
+                        ..
+                    } => {
+                        let app = tray.app_handle().clone();
+                        tauri::async_runtime::spawn(async move {
+                            crate::tray::refresh_all_usage_in_tray(&app).await;
+                        });
+                        // Prefer Up to avoid double-fire with Down on some platforms.
+                        if button == MouseButton::Left && button_state == MouseButtonState::Up {
+                            tray::show_main_window(tray.app_handle());
+                        }
                     }
                     _ => log::debug!("unhandled event {event:?}"),
                 })
@@ -1086,7 +1101,7 @@ pub fn run() {
                 .on_menu_event(|app, event| {
                     tray::handle_tray_menu_event(app, &event.id.0);
                 })
-                .show_menu_on_left_click(true);
+                .show_menu_on_left_click(false);
 
             // 使用平台对应的托盘图标（macOS 使用模板图标适配深浅色）
             #[cfg(target_os = "macos")]
